@@ -185,10 +185,3 @@ try {
 
 A complete Spring Boot integration example is available under [`examples/spring-boot-app/`](examples/spring-boot-app/).
 
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-MIT © Loga Engineering — see [LICENSE](LICENSE) for details.
