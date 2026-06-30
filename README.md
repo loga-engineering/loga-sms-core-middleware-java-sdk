@@ -8,13 +8,16 @@
 
 ## Features
 
-- SMS sending with Instant, Transaction, Campaign, Queued priorities
-- Delivery status checking
-- OAuth2 client credentials authentication with automatic token refresh
+- SMS sending with `QUEUED`, `INSTANT`, `TRANSACTION`, `CAMPAIGN` priorities
+- 5 convenience overloads: `send()`, `send(receiverAddress, message, priority)`, `sendWithSenderName()`, `sendWithCallback()`, `send(receiverAddress, message, senderName, callbackUrl, priority)`
+- Delivery status checking by `externalRefNo` or `idempotencyKey`
+- Dedicated `statusByKey()` method for idempotency-key-based lookup
+- OAuth2 client credentials authentication with automatic token refresh + 401 retry
 - Idempotency-Key support (header-based, Stripe convention)
-- Environment variable or programmatic configuration
+- Auto-load from `application.properties`, system properties, or environment variables
+- Fluent builder with timeout, grant type, and all configuration options
 - Thread-safe client, designed for singleton usage
-- Java 8+ compatible
+- Java 8+ compatible (bytecode level 8)
 
 ## Table of Contents
 
@@ -22,6 +25,7 @@
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Usage](#usage)
+- [API Reference](#api-reference)
 - [Examples](#examples)
 - [Contributing](#contributing)
 - [License](#license)
@@ -50,16 +54,20 @@ implementation 'com.loga:loga-sms-core-middleware-java-sdk:1.0.0'
 LogaSmsClient client = LogaSmsClient.create();
 SMSSendResponse response = client.send("+22370000000", "Hello from Loga!");
 System.out.println("Sent: " + response.getExternalRefNo());
+
+// Check delivery status
+SmsStatusResponse status = client.status(response.getExternalRefNo());
+System.out.println("Status: " + status.getStatus());
 ```
 
 ## Configuration
 
-The SDK can be configured via environment variables or programmatically through the builder.
+The SDK reads from environment variables, system properties, or `application.properties`.
 
 | Environment Variable | Property Key | Required | Default |
 |---|---|---|---|
-| `LOGA_SMS_CLIENT_ID` | `loga.sms.client-id` | Yes (for OAuth) | — |
-| `LOGA_SMS_CLIENT_SECRET` | `loga.sms.client-secret` | Yes (for OAuth) | — |
+| `LOGA_SMS_CLIENT_ID` | `loga.sms.client-id` | For OAuth | — |
+| `LOGA_SMS_CLIENT_SECRET` | `loga.sms.client-secret` | For OAuth | — |
 | `LOGA_SMS_API_KEY` | `loga.sms.api-key` | Yes | — |
 | `LOGA_SMS_BASE_URL` | `loga.sms.api-base-url` | No | `https://api.sms.loga-apps.com` |
 | `LOGA_SMS_DEFAULT_SENDER_NAME` | `loga.sms.default-sender-name` | No | — |
@@ -70,46 +78,41 @@ The SDK can be configured via environment variables or programmatically through 
 
 ### Creating a Client
 
-The simplest way is to use the factory method — it reads all configuration from environment variables:
-
 ```java
+// Auto-load from environment variables / application.properties
 LogaSmsClient client = LogaSmsClient.create();
-```
 
-For full programmatic control, use the builder:
-
-```java
+// Full programmatic control via builder
 LogaSmsClient client = LogaSmsClient.builder()
     .clientId("your-client-id")
     .clientSecret("your-client-secret")
     .apiKey("your-api-key")
-    .baseUrl("https://api.sms.loga-apps.com")
+    .apiBaseUrl("https://api.sms.loga-apps.com")
+    .defaultSenderName("MyApp")
+    .callbackUrl("https://myapp.com/webhook/sms")
+    .tokenUrl("https://api.sms.loga-apps.com/oauth/v1/token")
+    .grantType("client_credentials")
+    .connectTimeoutMs(10_000)
+    .readTimeoutMs(30_000)
     .build();
 ```
 
 ### Sending SMS
 
-**With defaults** (sender name and callback URL configured via environment variables):
-
 ```java
+// Basic send (uses defaults)
 SMSSendResponse response = client.send("+22370000000", "Hello!");
-```
 
-**Custom sender name:**
+// With specific priority
+SMSSendResponse response = client.send("+22370000000", "Hello!", SmsPriority.INSTANT);
 
-```java
+// Custom sender name
 SMSSendResponse response = client.sendWithSenderName("+22370000000", "Hello!", "MyApp");
-```
 
-**Custom callback URL:**
-
-```java
+// Custom callback URL
 SMSSendResponse response = client.sendWithCallback("+22370000000", "Hello!", "https://myapp.com/webhook");
-```
 
-**Full control** (sender, callback, and priority):
-
-```java
+// Full control
 SMSSendResponse response = client.send(
     "+22370000000",
     "Hello!",
@@ -122,13 +125,20 @@ SMSSendResponse response = client.send(
 ### Checking Delivery Status
 
 ```java
-SmsStatusResponse status = client.status("external-ref-no");
+// By external reference number (returned from send())
+SmsStatusResponse status = client.status("ext-ref-12345");
 System.out.println("Status: " + status.getStatus());
+System.out.println("Receiver: " + status.getReceiverAddress());
+System.out.println("Created: " + status.getCreatedAt());
+
+// By idempotency key (dedicated method)
+SmsStatusResponse status = client.statusByKey("my-idempotency-key-123");
+
+// By either (returns whichever is non-null)
+SmsStatusResponse status = client.status("ext-ref-12345", null);
 ```
 
 ### Error Handling
-
-All SDK exceptions are wrapped in a `LogaSmsException`:
 
 ```java
 try {
@@ -136,22 +146,40 @@ try {
 } catch (LogaSmsException e) {
     System.err.println("Error: " + e.getMessage());
     System.err.println("HTTP Status: " + e.getStatusCode());
+    System.err.println("Body: " + e.getResponseBody());
 }
 ```
 
-### Advanced Builder Reference
+## API Reference
+
+### LogaSmsClient
+
+| Method | Description |
+|---|---|
+| `send(receiverAddress, message)` | Send with default sender/priority |
+| `send(receiverAddress, message, priority)` | Send with specific priority |
+| `sendWithSenderName(receiverAddress, message, senderName)` | Send with custom sender name |
+| `sendWithCallback(receiverAddress, message, callbackUrl)` | Send with custom callback URL |
+| `send(receiverAddress, message, senderName, callbackUrl, priority)` | Full control send |
+| `status(externalRefNo)` | Check status by external reference |
+| `statusByKey(idempotencyKey)` | Check status by idempotency key |
+| `status(externalRefNo, idempotencyKey)` | Check status by either (first non-null wins) |
+
+### Builder
 
 | Method | Description |
 |---|---|
 | `.clientId(String)` | OAuth2 client ID |
 | `.clientSecret(String)` | OAuth2 client secret |
-| `.apiKey(String)` | API key for authentication |
-| `.baseUrl(String)` | Base URL for the SMS API |
+| `.apiKey(String)` | API key for header-based auth |
+| `.apiBaseUrl(String)` | Base URL for the SMS API |
 | `.tokenUrl(String)` | OAuth2 token endpoint URL |
-| `.defaultSenderName(String)` | Default sender name for messages |
-| `.callbackUrl(String)` | Default callback URL for delivery receipts |
-| `.connectTimeout(Duration)` | HTTP connect timeout |
-| `.readTimeout(Duration)` | HTTP read timeout |
+| `.grantType(String)` | OAuth2 grant type (default: `client_credentials`) |
+| `.defaultSenderName(String)` | Default sender name |
+| `.callbackUrl(String)` | Default callback URL |
+| `.idempotencyKey(String)` | Default idempotency key |
+| `.connectTimeoutMs(int)` | HTTP connect timeout in ms |
+| `.readTimeoutMs(int)` | HTTP read timeout in ms |
 
 ## Examples
 
