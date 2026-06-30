@@ -62,17 +62,17 @@ System.out.println("Status: " + status.getStatus());
 
 ## Configuration
 
-The SDK reads from environment variables, system properties, or `application.properties`.
+The SDK reads from environment variables, system properties, or `application.properties` using the prefix `loga.api.sms-messaging.meteor.*`.
 
 | Environment Variable | Property Key | Required | Default |
 |---|---|---|---|
-| `LOGA_SMS_CLIENT_ID` | `loga.sms.client-id` | For OAuth | — |
-| `LOGA_SMS_CLIENT_SECRET` | `loga.sms.client-secret` | For OAuth | — |
-| `LOGA_SMS_API_KEY` | `loga.sms.api-key` | Yes | — |
-| `LOGA_SMS_BASE_URL` | `loga.sms.api-base-url` | No | `https://api.sms.loga-apps.com` |
-| `LOGA_SMS_DEFAULT_SENDER_NAME` | `loga.sms.default-sender-name` | No | — |
-| `LOGA_SMS_DEFAULT_CALLBACK_URL` | `loga.sms.callback-url` | No | — |
-| `LOGA_SMS_TOKEN_URL` | `loga.sms.token-url` | No | `{baseUrl}/oauth/v1/token` |
+| `LOGA_API_SMS_MESSAGING_METEOR_OAUTH2_CLIENT_ID` | `loga.api.sms-messaging.meteor.oauth2.client-id` | For OAuth | — |
+| `LOGA_API_SMS_MESSAGING_METEOR_OAUTH2_CLIENT_SECRET` | `loga.api.sms-messaging.meteor.oauth2.client-secret` | For OAuth | — |
+| `LOGA_API_SMS_MESSAGING_METEOR_OAUTH2_API_KEY` | `loga.api.sms-messaging.meteor.oauth2.api-key` | Yes | — |
+| `LOGA_API_SMS_MESSAGING_METEOR_OAUTH2_TOKEN_URL` | `loga.api.sms-messaging.meteor.oauth2.token-url` | No | `{baseUrl}/oauth/v1/token` |
+| `LOGA_API_SMS_MESSAGING_METEOR_RESTCLIENT_API_BASE_URL` | `loga.api.sms-messaging.meteor.restclient.api-base-url` | No | `https://api.sms.loga-apps.com` |
+| `LOGA_API_SMS_MESSAGING_METEOR_RESTCLIENT_CALLBACK_URL` | `loga.api.sms-messaging.meteor.restclient.callback-url` | No | — |
+| `LOGA_API_SMS_MESSAGING_METEOR_DEFAULT_SENDER_NAME` | `loga.api.sms-messaging.meteor.default-sender-name` | No | — |
 
 ## Usage
 
