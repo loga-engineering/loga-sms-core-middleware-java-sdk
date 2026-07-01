@@ -6,12 +6,16 @@ import java.util.Properties;
 /**
  * Loads and manages configuration properties for the Loga SMS SDK.
  * It automatically attempts to read from 'application.properties' in the classpath.
+ * <p>
+ * When used with Spring Boot, properties are bound automatically from the
+ * environment using the prefix {@value #PREFIX}. In plain Java, use
+ * {@link #loadFromClasspath()} or the {@link com.loga.sms.sdk.LogaSmsClient.Builder}.
  */
 public class LogaSmsProperties {
 
     public static final String PREFIX = "loga.api.sms-messaging.meteor.";
 
-    private String tokenUrl;
+    private String tokenUrl = this.apiBaseUrl + "/oauth/v1/token"; // Default TokenURL
     private String grantType = "client_credentials";
     private String clientId;
     private String clientSecret;
@@ -19,7 +23,6 @@ public class LogaSmsProperties {
     private String apiBaseUrl = "https://api.sms.loga-apps.com"; // Default URL as placeholder
     private String callbackUrl;
     private String defaultSenderName;
-    private String idempotencyKey;
 
     private LogaSmsProperties() {
     }
@@ -51,7 +54,6 @@ public class LogaSmsProperties {
         props.apiBaseUrl = getProperty(systemProps, PREFIX + "restclient.api-base-url", props.apiBaseUrl);
         props.callbackUrl = getProperty(systemProps, PREFIX + "restclient.callback-url", props.callbackUrl);
         props.defaultSenderName = getProperty(systemProps, PREFIX + "default-sender-name", props.defaultSenderName);
-        props.idempotencyKey = getProperty(systemProps, PREFIX + "idempotency-key", props.idempotencyKey);
 
         return props;
     }
@@ -134,14 +136,6 @@ public class LogaSmsProperties {
 
     public void setDefaultSenderName(String defaultSenderName) {
         this.defaultSenderName = defaultSenderName;
-    }
-
-    public String getIdempotencyKey() {
-        return idempotencyKey;
-    }
-
-    public void setIdempotencyKey(String idempotencyKey) {
-        this.idempotencyKey = idempotencyKey;
     }
 
     public void validate() {

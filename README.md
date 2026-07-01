@@ -9,13 +9,16 @@
 ## Features
 
 - SMS sending with `QUEUED`, `INSTANT`, `TRANSACTION`, `CAMPAIGN` priorities
-- 5 convenience overloads: `send()`, `send(receiverAddress, message, priority)`, `sendWithSenderName()`, `sendWithCallback()`, `send(receiverAddress, message, senderName, callbackUrl, priority)`
+- Multiple convenience overloads: `send()`, `send(..., priority)`, `sendWithSenderName()`, `sendWithCallback()`, `send(..., senderName, callbackUrl, priority)`
+- **Per-request idempotency key** — auto-generated UUID or explicit via parameter
 - Delivery status checking by `externalRefNo` or `idempotencyKey`
 - Dedicated `statusByKey()` method for idempotency-key-based lookup
 - OAuth2 client credentials authentication with automatic token refresh + 401 retry
-- Idempotency-Key support (header-based, Stripe convention)
+- Idempotency-Key header (Stripe convention)
 - Auto-load from `application.properties`, system properties, or environment variables
-- Fluent builder with timeout, grant type, and all configuration options
+- Fluent builder with timeout and all configuration options
+- **Spring Boot auto-configuration** (`@ConfigurationProperties` binding, auto-wired `LogaSmsClient` bean)
+- **Quarkus / CDI support** (CDI producer, auto-discovery)
 - Thread-safe client, designed for singleton usage
 - Java 8+ compatible (bytecode level 8)
 
@@ -26,6 +29,7 @@
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [API Reference](#api-reference)
+- [Framework Integration](#framework-integration)
 - [Examples](#examples)
 - [Contributing](#contributing)
 - [License](#license)
@@ -74,6 +78,8 @@ The SDK reads from environment variables, system properties, or `application.pro
 | `LOGA_API_SMS_MESSAGING_METEOR_RESTCLIENT_CALLBACK_URL` | `loga.api.sms-messaging.meteor.restclient.callback-url` | No | — |
 | `LOGA_API_SMS_MESSAGING_METEOR_DEFAULT_SENDER_NAME` | `loga.api.sms-messaging.meteor.default-sender-name` | No | — |
 
+> **Note:** The idempotency key is not a configuration property. It is either auto-generated (UUID) for each `send()` call or passed explicitly as a parameter — see [Sending SMS with idempotency key](#sending-sms).
+
 ## Usage
 
 ### Creating a Client
@@ -100,7 +106,7 @@ LogaSmsClient client = LogaSmsClient.builder()
 ### Sending SMS
 
 ```java
-// Basic send (uses defaults)
+// Basic send — idempotency key auto-generated
 SMSSendResponse response = client.send("+22370000000", "Hello!");
 
 // With specific priority
@@ -112,13 +118,35 @@ SMSSendResponse response = client.sendWithSenderName("+22370000000", "Hello!", "
 // Custom callback URL
 SMSSendResponse response = client.sendWithCallback("+22370000000", "Hello!", "https://myapp.com/webhook");
 
-// Full control
+// Full control — auto-generated idempotency key
 SMSSendResponse response = client.send(
     "+22370000000",
     "Hello!",
     "MyApp",
     "https://myapp.com/webhook",
     SmsPriority.INSTANT
+);
+```
+
+### Sending SMS with idempotency key
+
+Pass an explicit idempotency key to ensure idempotent request delivery:
+
+```java
+// With explicit idempotency key (auto-generated if null/empty)
+SMSSendResponse response = client.send("+22370000000", "Hello!", "my-unique-key-123");
+
+// With explicit idempotency key + priority
+SMSSendResponse response = client.send("+22370000000", "Hello!", SmsPriority.INSTANT, "my-unique-key-456");
+
+// Full control + explicit idempotency key
+SMSSendResponse response = client.send(
+    "+22370000000",
+    "Hello!",
+    "MyApp",
+    "https://myapp.com/webhook",
+    SmsPriority.INSTANT,
+    "my-unique-key-789"
 );
 ```
 
@@ -152,15 +180,25 @@ try {
 
 ## API Reference
 
-### LogaSmsClient
+### LogaSmsClient — Send Methods
+
+| Method | Idempotency Key |
+|---|---|
+| `send(receiverAddress, message)` | Auto-generated |
+| `send(receiverAddress, message, idempotencyKey)` | Explicit |
+| `send(receiverAddress, message, priority)` | Auto-generated |
+| `send(receiverAddress, message, priority, idempotencyKey)` | Explicit |
+| `sendWithSenderName(receiverAddress, message, senderName)` | Auto-generated |
+| `sendWithSenderName(receiverAddress, message, senderName, idempotencyKey)` | Explicit |
+| `sendWithCallback(receiverAddress, message, callbackUrl)` | Auto-generated |
+| `sendWithCallback(receiverAddress, message, callbackUrl, idempotencyKey)` | Explicit |
+| `send(receiverAddress, message, senderName, callbackUrl, priority)` | Auto-generated |
+| `send(receiverAddress, message, senderName, callbackUrl, priority, idempotencyKey)` | Explicit |
+
+### LogaSmsClient — Status Methods
 
 | Method | Description |
 |---|---|
-| `send(receiverAddress, message)` | Send with default sender/priority |
-| `send(receiverAddress, message, priority)` | Send with specific priority |
-| `sendWithSenderName(receiverAddress, message, senderName)` | Send with custom sender name |
-| `sendWithCallback(receiverAddress, message, callbackUrl)` | Send with custom callback URL |
-| `send(receiverAddress, message, senderName, callbackUrl, priority)` | Full control send |
 | `status(externalRefNo)` | Check status by external reference |
 | `statusByKey(idempotencyKey)` | Check status by idempotency key |
 | `status(externalRefNo, idempotencyKey)` | Check status by either (first non-null wins) |
@@ -177,9 +215,49 @@ try {
 | `.grantType(String)` | OAuth2 grant type (default: `client_credentials`) |
 | `.defaultSenderName(String)` | Default sender name |
 | `.callbackUrl(String)` | Default callback URL |
-| `.idempotencyKey(String)` | Default idempotency key |
 | `.connectTimeoutMs(int)` | HTTP connect timeout in ms |
 | `.readTimeoutMs(int)` | HTTP read timeout in ms |
+
+## Framework Integration
+
+### Spring Boot
+
+The SDK provides auto-configuration for Spring Boot. When the SDK is on the classpath, a `LogaSmsClient` bean is automatically created and properties are bound from the Spring Environment using the `loga.api.sms-messaging.meteor.*` prefix.
+
+```properties
+# application.properties
+loga.api.sms-messaging.meteor.oauth2.client-id=${LOGA_SMS_CLIENT_ID}
+loga.api.sms-messaging.meteor.oauth2.client-secret=${LOGA_SMS_CLIENT_SECRET}
+loga.api.sms-messaging.meteor.oauth2.api-key=${LOGA_SMS_API_KEY}
+loga.api.sms-messaging.meteor.restclient.api-base-url=https://api.sms.loga-apps.com
+loga.api.sms-messaging.meteor.default-sender-name=MyApp
+```
+
+```java
+@SpringBootApplication
+public class MyApplication {
+    // LogaSmsClient is auto-wired — no manual bean definition needed
+}
+```
+
+### Quarkus / CDI
+
+A CDI producer is included for Quarkus and other CDI containers. The `LogaSmsClient` bean is automatically produced from classpath configuration.
+
+```java
+@Path("/sms")
+public class SmsResource {
+    @Inject
+    LogaSmsClient smsClient;
+
+    @POST
+    @Path("/send")
+    public Response send(String to, String message) {
+        SMSSendResponse response = smsClient.send(to, message);
+        return Response.ok(response).build();
+    }
+}
+```
 
 ## Examples
 

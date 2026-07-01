@@ -59,6 +59,22 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
+
+        <!-- Spring Boot Auto-Configuration (optional) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <version>2.7.18</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- CDI API for Quarkus / Jakarta EE support (optional) -->
+        <dependency>
+            <groupId>javax.enterprise</groupId>
+            <artifactId>cdi-api</artifactId>
+            <version>2.0.SP1</version>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <distributionManagement>

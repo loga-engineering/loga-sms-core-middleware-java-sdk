@@ -91,20 +91,43 @@ public class SmsController {
             @RequestParam String message,
             @RequestParam(required = false) String senderName,
             @RequestParam(required = false) String callbackUrl,
-            @RequestParam(defaultValue = "QUEUED") String priority) {
+            @RequestParam(defaultValue = "QUEUED") String priority,
+            @RequestParam(required = false) String idempotencyKey) {
         try {
             SmsPriority smsPriority = SmsPriority.valueOf(priority.toUpperCase());
-            SMSSendResponse response = smsClient.send(to, message, senderName, callbackUrl, smsPriority);
+            SMSSendResponse response = smsClient.send(to, message, senderName, callbackUrl, smsPriority, idempotencyKey);
             return ResponseEntity.ok(Map.of(
                     "externalRefNo", response.getExternalRefNo(),
                     "status", response.getStatus(),
                     "message", response.getMessage(),
                     "mode", "full control",
-                    "priority", priority
+                    "priority", priority,
+                    "idempotencyKey", idempotencyKey != null ? idempotencyKey : "auto-generated"
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Invalid priority. Use: INSTANT, TRANSACTION, CAMPAIGN, QUEUED"
+            ));
+        } catch (LogaSmsException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of(
+                    "error", e.getMessage(),
+                    "statusCode", e.getStatusCode()
+            ));
+        }
+    }
+
+    @PostMapping("/send/with-idempotency")
+    public ResponseEntity<?> sendWithIdempotency(
+            @RequestParam String to,
+            @RequestParam String message,
+            @RequestParam String idempotencyKey) {
+        try {
+            SMSSendResponse response = smsClient.send(to, message, idempotencyKey);
+            return ResponseEntity.ok(Map.of(
+                    "externalRefNo", response.getExternalRefNo(),
+                    "status", response.getStatus(),
+                    "message", response.getMessage(),
+                    "mode", "custom idempotency key"
             ));
         } catch (LogaSmsException e) {
             return ResponseEntity.status(e.getStatusCode()).body(Map.of(

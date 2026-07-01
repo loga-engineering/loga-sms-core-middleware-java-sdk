@@ -95,6 +95,20 @@ public final class LogaSmsClient {
     }
 
     /**
+     * Creates a client from a pre-built {@link LogaSmsProperties} instance.
+     * Useful for framework integrations (Spring Boot, Quarkus, etc.)
+     * that bind properties from their own configuration system.
+     *
+     * @param properties a fully populated configuration
+     * @return a ready-to-use {@link LogaSmsClient}
+     * @throws IllegalArgumentException if required properties are missing
+     */
+    public static LogaSmsClient create(LogaSmsProperties properties) {
+        properties.validate();
+        return new LogaSmsClient(properties, new LogaHttpClient());
+    }
+
+    /**
      * Returns a new {@link Builder} for programmatic configuration.
      */
     public static Builder builder() {
@@ -166,6 +180,23 @@ public final class LogaSmsClient {
      * @throws LogaSmsException on any communication or authentication error
      */
     public SMSSendResponse send(String receiverAddress, String message, String senderName, String callbackUrl, SmsPriority priority) {
+        return send(receiverAddress, message, senderName, callbackUrl, priority, null);
+    }
+
+    /**
+     * Full-control send with an explicit idempotency key.
+     * If idempotencyKey is null or empty, a random UUID is generated automatically.
+     *
+     * @param receiverAddress phone number in international format
+     * @param message         the SMS body
+     * @param senderName      the sender name (may be null to use default)
+     * @param callbackUrl     the callback URL (may be null to use default)
+     * @param priority        the delivery priority
+     * @param idempotencyKey  a unique idempotency key (null/empty = auto-generated)
+     * @return the send response
+     * @throws LogaSmsException on any communication or authentication error
+     */
+    public SMSSendResponse send(String receiverAddress, String message, String senderName, String callbackUrl, SmsPriority priority, String idempotencyKey) {
         if (receiverAddress == null || receiverAddress.trim().isEmpty()) {
             throw new IllegalArgumentException("receiverAddress cannot be null or empty");
         }
@@ -181,6 +212,9 @@ public final class LogaSmsClient {
         if (callbackUrl == null || callbackUrl.trim().isEmpty()) {
             callbackUrl = properties.getCallbackUrl();
         }
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
+            idempotencyKey = UUID.randomUUID().toString();
+        }
 
         SMSSendRequest request = new SMSSendRequest(receiverAddress, message, senderName, callbackUrl, priority);
 
@@ -188,16 +222,10 @@ public final class LogaSmsClient {
             String jsonBody = objectMapper.writeValueAsString(request);
             String url = properties.getApiBaseUrl() + SMS_SEND_PATH;
 
-            // DX: Use provided idempotencyKey if available, otherwise generate one
-            String finalIdempotencyKey = properties.getIdempotencyKey();
-            if (finalIdempotencyKey == null || finalIdempotencyKey.trim().isEmpty()) {
-                finalIdempotencyKey = UUID.randomUUID().toString();
-            }
-
             Map<String, String> headers = buildAuthHeaders();
-            headers.put("Idempotency-Key", finalIdempotencyKey);
+            headers.put("Idempotency-Key", idempotencyKey);
 
-            log.debug("Sending SMS to {} via {} with Idempotency-Key: {}", receiverAddress, url, finalIdempotencyKey);
+            log.debug("Sending SMS to {} via {} with Idempotency-Key: {}", receiverAddress, url, idempotencyKey);
 
             LogaHttpClient.HttpResponse httpResponse = httpClient.postJson(url, jsonBody, headers);
 
@@ -206,7 +234,7 @@ public final class LogaSmsClient {
                 log.info("Received 401, refreshing token and retrying...");
                 tokenManager.invalidate();
                 headers = buildAuthHeaders();
-                headers.put("Idempotency-Key", finalIdempotencyKey);
+                headers.put("Idempotency-Key", idempotencyKey);
                 httpResponse = httpClient.postJson(url, jsonBody, headers);
             }
 
@@ -225,6 +253,57 @@ public final class LogaSmsClient {
         } catch (Exception e) {
             throw new LogaSmsException("Failed to send SMS: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Sends an SMS with an explicit idempotency key, using defaults for sender and callback.
+     *
+     * @param receiverAddress phone number in international format
+     * @param message         the SMS body
+     * @param idempotencyKey  a unique idempotency key (null/empty = auto-generated)
+     * @return the send response
+     */
+    public SMSSendResponse send(String receiverAddress, String message, String idempotencyKey) {
+        return send(receiverAddress, message, properties.getDefaultSenderName(), properties.getCallbackUrl(), SmsPriority.QUEUED, idempotencyKey);
+    }
+
+    /**
+     * Sends an SMS with an explicit idempotency key and priority.
+     *
+     * @param receiverAddress phone number in international format
+     * @param message         the SMS body
+     * @param priority        the delivery priority
+     * @param idempotencyKey  a unique idempotency key (null/empty = auto-generated)
+     * @return the send response
+     */
+    public SMSSendResponse send(String receiverAddress, String message, SmsPriority priority, String idempotencyKey) {
+        return send(receiverAddress, message, properties.getDefaultSenderName(), properties.getCallbackUrl(), priority, idempotencyKey);
+    }
+
+    /**
+     * Sends an SMS with a custom callback URL and explicit idempotency key.
+     *
+     * @param receiverAddress phone number in international format
+     * @param message         the SMS body
+     * @param callbackUrl     the per-request callback URL
+     * @param idempotencyKey  a unique idempotency key (null/empty = auto-generated)
+     * @return the send response
+     */
+    public SMSSendResponse sendWithCallback(String receiverAddress, String message, String callbackUrl, String idempotencyKey) {
+        return send(receiverAddress, message, properties.getDefaultSenderName(), callbackUrl, SmsPriority.QUEUED, idempotencyKey);
+    }
+
+    /**
+     * Sends an SMS with a custom sender name and explicit idempotency key.
+     *
+     * @param receiverAddress phone number in international format
+     * @param message         the SMS body
+     * @param senderName      custom sender name for this message
+     * @param idempotencyKey  a unique idempotency key (null/empty = auto-generated)
+     * @return the send response
+     */
+    public SMSSendResponse sendWithSenderName(String receiverAddress, String message, String senderName, String idempotencyKey) {
+        return send(receiverAddress, message, senderName, properties.getCallbackUrl(), SmsPriority.QUEUED, idempotencyKey);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -313,7 +392,6 @@ public final class LogaSmsClient {
         private String apiBaseUrl;
         private String callbackUrl;
         private String defaultSenderName;
-        private String idempotencyKey;
         private int connectTimeoutMs = 10_000;
         private int readTimeoutMs = 30_000;
 
@@ -360,11 +438,6 @@ public final class LogaSmsClient {
             return this;
         }
 
-        public Builder idempotencyKey(String idempotencyKey) {
-            this.idempotencyKey = idempotencyKey;
-            return this;
-        }
-
         public Builder connectTimeoutMs(int connectTimeoutMs) {
             this.connectTimeoutMs = connectTimeoutMs;
             return this;
@@ -394,7 +467,6 @@ public final class LogaSmsClient {
             if (apiBaseUrl != null) props.setApiBaseUrl(apiBaseUrl);
             if (callbackUrl != null) props.setCallbackUrl(callbackUrl);
             if (defaultSenderName != null) props.setDefaultSenderName(defaultSenderName);
-            if (idempotencyKey != null) props.setIdempotencyKey(idempotencyKey);
 
             props.validate();
             return new LogaSmsClient(props, new LogaHttpClient(connectTimeoutMs, readTimeoutMs));
