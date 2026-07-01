@@ -1,27 +1,106 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        type: string
+      deploy_github_packages:
+        description: 'Deploy to GitHub Packages (Loga private)'
+        required: true
+        type: boolean
+        default: true
+      deploy_maven_central:
+        description: 'Deploy to Maven Central'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: loga-sms-core-middleware-java-sdk
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up JDK 8
         uses: actions/setup-java@v4
         with:
-          java-version: 8
-          distribution: temurin
-          server-id: github
-          settings-path: ${{ github.workspace }}
-      - name: Extract version from tag
-        run: echo "REVISION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-      - name: Build and test
-        run: mvn clean verify -Drevision=${{ env.REVISION }}
-      - name: Publish to GitHub Packages
-        run: mvn deploy -Drevision=${{ env.REVISION }} -s ${{ github.workspace }}/settings.xml
+          java-version: '8'
+          distribution: 'temurin'
+
+      - name: Build & verify with Maven
+        run: mvn -B clean verify -Drevision=${{ inputs.version }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-jars-${{ inputs.version }}
+          path: loga-sms-core-middleware-java-sdk/target/*.jar
+
+  deploy-github-packages:
+    needs: build
+    if: ${{ inputs.deploy_github_packages }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: loga-sms-core-middleware-java-sdk
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+
+      - name: Deploy to GitHub Packages
+        run: |
+          mvn -B clean deploy \
+            -Drevision=${{ inputs.version }} \
+            -DaltDeploymentRepository=github::https://maven.pkg.github.com/loga-engineering/loga-sms-core-middleware-java-sdk
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-maven-central:
+    needs: build
+    if: ${{ inputs.deploy_maven_central }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: loga-sms-core-middleware-java-sdk
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          server-id: central
+          server-username: MAVEN_CENTRAL_USERNAME
+          server-password: MAVEN_CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Deploy to Maven Central
+        run: |
+          mvn -B clean deploy \
+            -Drevision=${{ inputs.version }} \
+            -DaltDeploymentRepository=central::https://central.sonatype.com/repository/maven-central/ \
+            -Pgpg-sign
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
