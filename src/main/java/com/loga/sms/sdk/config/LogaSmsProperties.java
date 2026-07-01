@@ -1,9 +1,9 @@
 package com.loga.sms.sdk.config;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import java.io.InputStream;
 import java.util.Properties;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Loads and manages configuration properties for the Loga SMS SDK.
@@ -18,7 +18,7 @@ public class LogaSmsProperties {
 
     public static final String PREFIX = "loga.api.sms-messaging.meteor";
 
-    private String tokenUrl = this.apiBaseUrl + "/oauth/v1/token"; // Default TokenURL
+    private String tokenUrl = "https://api.sms.loga-apps.com/oauth/v1/token"; // Default TokenURL
     private String grantType = "client_credentials";
     private String clientId;
     private String clientSecret;
