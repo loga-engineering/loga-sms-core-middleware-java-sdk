@@ -25,9 +25,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: loga-sms-core-middleware-java-sdk
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,15 +42,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sdk-jars-${{ inputs.version }}
-          path: loga-sms-core-middleware-java-sdk/target/*.jar
+          path: target/*.jar
 
   deploy-github-packages:
     needs: build
     if: ${{ inputs.deploy_github_packages }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: loga-sms-core-middleware-java-sdk
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -76,9 +70,6 @@ jobs:
     needs: build
     if: ${{ inputs.deploy_maven_central }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: loga-sms-core-middleware-java-sdk
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
