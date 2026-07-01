@@ -3,6 +3,8 @@ package com.loga.sms.sdk.config;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 /**
  * Loads and manages configuration properties for the Loga SMS SDK.
  * It automatically attempts to read from 'application.properties' in the classpath.
@@ -11,9 +13,10 @@ import java.util.Properties;
  * environment using the prefix {@value #PREFIX}. In plain Java, use
  * {@link #loadFromClasspath()} or the {@link com.loga.sms.sdk.LogaSmsClient.Builder}.
  */
+@ConfigurationProperties(prefix = "loga.api.sms-messaging.meteor")
 public class LogaSmsProperties {
 
-    public static final String PREFIX = "loga.api.sms-messaging.meteor.";
+    public static final String PREFIX = "loga.api.sms-messaging.meteor";
 
     private String tokenUrl = this.apiBaseUrl + "/oauth/v1/token"; // Default TokenURL
     private String grantType = "client_credentials";
@@ -24,7 +27,7 @@ public class LogaSmsProperties {
     private String callbackUrl;
     private String defaultSenderName;
 
-    private LogaSmsProperties() {
+    public LogaSmsProperties() {
     }
 
     /**
@@ -46,14 +49,14 @@ public class LogaSmsProperties {
         // In Spring Boot, environment variables / Spring Environment usually injects these.
         // We will read system properties and application.properties.
 
-        props.tokenUrl = getProperty(systemProps, PREFIX + "oauth2.token-url", props.tokenUrl);
-        props.grantType = getProperty(systemProps, PREFIX + "oauth2.grant-type", props.grantType);
-        props.clientId = getProperty(systemProps, PREFIX + "oauth2.client-id", props.clientId);
-        props.clientSecret = getProperty(systemProps, PREFIX + "oauth2.client-secret", props.clientSecret);
-        props.apiKey = getProperty(systemProps, PREFIX + "oauth2.api-key", props.apiKey);
-        props.apiBaseUrl = getProperty(systemProps, PREFIX + "restclient.api-base-url", props.apiBaseUrl);
-        props.callbackUrl = getProperty(systemProps, PREFIX + "restclient.callback-url", props.callbackUrl);
-        props.defaultSenderName = getProperty(systemProps, PREFIX + "default-sender-name", props.defaultSenderName);
+        props.tokenUrl = getProperty(systemProps, PREFIX + ".oauth2.token-url", props.tokenUrl);
+        props.grantType = getProperty(systemProps, PREFIX + ".oauth2.grant-type", props.grantType);
+        props.clientId = getProperty(systemProps, PREFIX + ".oauth2.client-id", props.clientId);
+        props.clientSecret = getProperty(systemProps, PREFIX + ".oauth2.client-secret", props.clientSecret);
+        props.apiKey = getProperty(systemProps, PREFIX + ".oauth2.api-key", props.apiKey);
+        props.apiBaseUrl = getProperty(systemProps, PREFIX + ".restclient.api-base-url", props.apiBaseUrl);
+        props.callbackUrl = getProperty(systemProps, PREFIX + ".restclient.callback-url", props.callbackUrl);
+        props.defaultSenderName = getProperty(systemProps, PREFIX + ".default-sender-name", props.defaultSenderName);
 
         return props;
     }

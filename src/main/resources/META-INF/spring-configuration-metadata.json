@@ -1,0 +1,74 @@
+{
+  "groups": [
+    {
+      "name": "loga.api.sms-messaging.meteor",
+      "type": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "description": "Loga SMS Core Middleware SDK configuration."
+    }
+  ],
+  "properties": [
+    {
+      "name": "loga.api.sms-messaging.meteor.oauth2.client-id",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "description": "OAuth2 client ID."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.oauth2.client-secret",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "description": "OAuth2 client secret."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.oauth2.api-key",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "description": "API key for the X-API-KEY header."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.oauth2.token-url",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "defaultValue": "https://api.sms.loga-apps.com/oauth/v1/token",
+      "description": "OAuth2 token endpoint URL."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.oauth2.grant-type",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "defaultValue": "client_credentials",
+      "description": "OAuth2 grant type."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.restclient.api-base-url",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "defaultValue": "https://api.sms.loga-apps.com",
+      "description": "Base URL for the SMS REST API."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.restclient.callback-url",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "description": "Default callback URL for delivery receipts."
+    },
+    {
+      "name": "loga.api.sms-messaging.meteor.default-sender-name",
+      "type": "java.lang.String",
+      "sourceType": "com.loga.sms.sdk.config.LogaSmsProperties",
+      "description": "Default sender name for outbound SMS."
+    }
+  ],
+  "hints": [
+    {
+      "name": "loga.api.sms-messaging.meteor.oauth2.grant-type",
+      "values": [
+        {
+          "value": "client_credentials",
+          "description": "Client credentials flow."
+        }
+      ]
+    }
+  ]
+}
