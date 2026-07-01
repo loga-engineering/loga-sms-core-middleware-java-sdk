@@ -1,0 +1,39 @@
+name: Publish to GitHub Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version à publier (ex: 1.0.0)"
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Deploy to GitHub Packages
+        run: |
+          mvn -B clean deploy \
+            -Drevision=${{ inputs.version }} \
+            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/loga-engineering/loga-sms-core-middleware-java-sdk
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
