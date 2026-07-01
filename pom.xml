@@ -31,8 +31,8 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/loga-engineering/loga-sms.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/loga-engineering/loga-sms.git</developerConnection>
+        <connection>scm:git:git://github.com/loga-engineering/loga-sms-core-middleware-java-sdk.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/loga-engineering/loga-sms-core-middleware-java-sdk.git</developerConnection>
         <url>https://github.com/loga-engineering/loga-sms-core-middleware-java-sdk</url>
     </scm>
 
